@@ -68,9 +68,6 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
   const [state, setState] = useState<InterviewState>("idle");
   const [transcript, setTranscript] = useState("");
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
-  const [evaluationSource, setEvaluationSource] = useState<
-    "gemini" | "groq" | "local" | null
-  >(null);
   const [questionTimer, setQuestionTimer] = useState(0);
   const [showKeyPoints, setShowKeyPoints] = useState(false);
   const processedBlobRef = useRef<string | null>(null);
@@ -173,7 +170,6 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
         }
 
         setEvaluation(evalData.evaluation);
-        setEvaluationSource(evalData.evaluationSource ?? "gemini");
         if (evalData.evaluationSource === "local") {
           toast.info(
             "AI quota reached — showing estimated feedback. Full AI scoring will return when quota resets."
@@ -226,7 +222,6 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
       processedBlobRef.current = null;
       setTranscript("");
       setEvaluation(null);
-      setEvaluationSource(null);
       setShowKeyPoints(false);
       await start();
     }
@@ -238,7 +233,6 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
       setState("idle");
       setTranscript("");
       setEvaluation(null);
-      setEvaluationSource(null);
       setShowKeyPoints(false);
       setQuestionTimer(0);
       resetRecorder();
@@ -256,8 +250,6 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
         setState("idle");
         setTranscript("");
         setEvaluation(null);
-        setEvaluationSource(null);
-      setEvaluationSource(null);
         setShowKeyPoints(false);
         setQuestionTimer(0);
         resetRecorder();
