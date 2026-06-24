@@ -3,6 +3,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { auth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { analyzeResumeText } from "@/lib/resume-analysis";
+import { formatGeminiUserError } from "@/lib/gemini";
 import { extractTextFromFile } from "@/lib/resume-parser";
 import connectDB from "@/lib/mongodb";
 import Resume from "@/models/Resume";
@@ -150,12 +151,12 @@ export async function POST(request: Request) {
       });
     }
 
-    return apiSuccess({ resume: serializeResume(resume) });
+    return apiSuccess({
+      resume: serializeResume(resume),
+      analysisSource: analysis.analysisSource,
+    });
   } catch (error) {
     console.error("Resume upload error:", error);
-    return apiError(
-      error instanceof Error ? error.message : "Failed to analyze resume",
-      500
-    );
+    return apiError(formatGeminiUserError(error), 500);
   }
 }

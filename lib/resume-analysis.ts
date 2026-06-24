@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { generateGeminiJSON } from "@/lib/gemini";
+import { generateAIJSON, type AISource } from "@/lib/ai-json";
 
 export const resumeAnalysisSchema = z.object({
   skills: z.array(z.string()).default([]),
@@ -15,10 +15,14 @@ export const resumeAnalysisSchema = z.object({
 
 export type ResumeAnalysis = z.infer<typeof resumeAnalysisSchema>;
 
+export type ResumeAnalysisResult = ResumeAnalysis & {
+  analysisSource: AISource;
+};
+
 export async function analyzeResumeText(
   resumeText: string,
   targetRole?: string
-): Promise<ResumeAnalysis> {
+): Promise<ResumeAnalysisResult> {
   const prompt = `Analyze this resume for a candidate${
     targetRole ? ` targeting the role: ${targetRole}` : ""
   }.
@@ -40,7 +44,7 @@ Return JSON:
 
 Score based on: clarity, relevant skills, project depth, formatting signals, and role fit.`;
 
-  const result = await generateGeminiJSON<unknown>(prompt);
+  const { data: result, source } = await generateAIJSON<unknown>(prompt);
   const parsed = resumeAnalysisSchema.safeParse(result);
 
   if (!parsed.success) {
@@ -50,5 +54,5 @@ Score based on: clarity, relevant skills, project depth, formatting signals, and
     );
   }
 
-  return parsed.data;
+  return { ...parsed.data, analysisSource: source };
 }

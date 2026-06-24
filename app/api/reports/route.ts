@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/lib/auth";
-import { generateGeminiJSON } from "@/lib/gemini";
+import { generateAIJSON } from "@/lib/ai-json";
+import { formatGeminiUserError } from "@/lib/gemini";
 import connectDB from "@/lib/mongodb";
 import {
   reportReadyEmail,
@@ -176,7 +177,7 @@ Return JSON:
   "thirtyDayRoadmap": [{ "week": 1, "focus": "...", "tasks": ["..."] }]
 }`;
 
-    const geminiResult = await generateGeminiJSON<unknown>(prompt);
+    const { data: geminiResult } = await generateAIJSON<unknown>(prompt);
     const validated = reportResponseSchema.safeParse(geminiResult);
 
     if (!validated.success) {
@@ -231,10 +232,7 @@ Return JSON:
   } catch (error) {
     console.error("Report generate error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to generate report",
-      },
+      { error: formatGeminiUserError(error) },
       { status: 500 }
     );
   }

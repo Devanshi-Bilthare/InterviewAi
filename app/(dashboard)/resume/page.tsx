@@ -70,7 +70,11 @@ export default function ResumePage() {
 
       setResume(data.resume);
       setPastedText("");
-      toast.success("Resume analyzed successfully!");
+      if (data.analysisSource === "groq") {
+        toast.info("Analyzed using backup AI while Gemini quota resets.");
+      } else {
+        toast.success("Resume analyzed successfully!");
+      }
     } catch {
       toast.error("Failed to upload resume");
     } finally {
