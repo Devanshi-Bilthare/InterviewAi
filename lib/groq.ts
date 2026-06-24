@@ -44,3 +44,49 @@ export async function transcribeAudio(
 
   return text;
 }
+
+function parseJsonResponse(text: string): unknown {
+  const cleaned = text
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+    if (!match) {
+      throw new Error("Failed to parse Groq JSON response");
+    }
+    return JSON.parse(match[0]);
+  }
+}
+
+export async function generateGroqJSON<T>(
+  prompt: string,
+  systemInstruction?: string
+): Promise<T> {
+  const groq = getGroq();
+  const messages: Array<{ role: "system" | "user"; content: string }> = [];
+
+  if (systemInstruction) {
+    messages.push({ role: "system", content: systemInstruction });
+  }
+
+  messages.push({ role: "user", content: prompt });
+
+  const completion = await groq.chat.completions.create({
+    model: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
+    messages,
+    temperature: 0.7,
+    response_format: { type: "json_object" },
+  });
+
+  const text = completion.choices[0]?.message?.content?.trim();
+  if (!text) {
+    throw new Error("Empty Groq response");
+  }
+
+  return parseJsonResponse(text) as T;
+}

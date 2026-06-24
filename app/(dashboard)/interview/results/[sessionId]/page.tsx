@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import dynamic from "next/dynamic";
 import { Loader2, RotateCcw, Share2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,15 +21,6 @@ import { GlowCard } from "@/components/ui/GlowCard";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { DimensionScores } from "@/types";
-
-const ResultsRadar = dynamic(
-  () =>
-    import("@/components/dashboard/PerformanceRadarChart").then((m) => ({
-      default: m.PerformanceRadarChart,
-    })),
-  { ssr: false, loading: () => <Loader2 className="mx-auto size-6 animate-spin" /> }
-);
 
 interface ResultsData {
   session: {
@@ -38,7 +28,6 @@ interface ResultsData {
     category: string;
     interviewType?: string;
     overallScore?: number;
-    dimensionScores?: DimensionScores;
     status: string;
     duration?: number;
     aiConversation?: Array<{
@@ -56,7 +45,6 @@ interface ResultsData {
     id: string;
     questionId?: string;
     overallScore: number;
-    dimensions: DimensionScores;
     strengths: string[];
     weaknesses: string[];
     suggestions: string[];
@@ -113,21 +101,6 @@ export default function InterviewResultsPage({
   }
 
   const { session, questions, evaluations, answers } = data;
-  const dimensions = session.dimensionScores ?? {
-    relevance: 0,
-    technicalAccuracy: 0,
-    communication: 0,
-    confidence: 0,
-    completeness: 0,
-  };
-
-  const radarData = [
-    { dimension: "Relevance", score: dimensions.relevance },
-    { dimension: "Technical", score: dimensions.technicalAccuracy },
-    { dimension: "Communication", score: dimensions.communication },
-    { dimension: "Confidence", score: dimensions.confidence },
-    { dimension: "Completeness", score: dimensions.completeness },
-  ];
 
   const handleShare = async () => {
     const text = `I scored ${session.overallScore ?? 0}/100 on my ${session.category} mock interview on InterviewAI!`;
@@ -159,31 +132,12 @@ export default function InterviewResultsPage({
         </p>
       </motion.div>
 
-      <motion.div
-        className="flex flex-col items-center gap-8 md:flex-row md:justify-center"
-        variants={staggerItem}
-      >
+      <motion.div className="flex justify-center" variants={staggerItem}>
         <ScoreRing
           score={session.overallScore ?? 0}
           size={160}
           label="Overall Score"
         />
-
-        <GlowCard className="w-full max-w-sm">
-          <h3 className="mb-4 text-center font-display text-lg font-semibold text-text-primary">
-            Performance Radar
-          </h3>
-          <div className="overflow-x-auto">
-            <ResultsRadar
-              data={radarData}
-              colors={{
-                primary: "#6366F1",
-                grid: "#1F2937",
-                text: "#9CA3AF",
-              }}
-            />
-          </div>
-        </GlowCard>
       </motion.div>
 
       <motion.div className="space-y-3" variants={staggerItem}>

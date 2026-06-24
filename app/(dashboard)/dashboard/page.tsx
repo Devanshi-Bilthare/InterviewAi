@@ -15,7 +15,6 @@ import {
 import { format } from "date-fns";
 
 import { ActivityHeatmap } from "@/components/dashboard/ActivityHeatmap";
-import { PerformanceRadar } from "@/components/dashboard/PerformanceRadar";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { GlowCard } from "@/components/ui/GlowCard";
 import { ScoreRing } from "@/components/ui/ScoreRing";
@@ -24,7 +23,6 @@ import {
   staggerItem,
 } from "@/components/layout/PageTransition";
 import { getCategoryById } from "@/lib/interview-categories";
-import type { DimensionScores } from "@/types";
 
 interface DashboardData {
   greeting: string;
@@ -50,7 +48,6 @@ interface DashboardData {
     overallScore: number;
     completedAt?: string;
   }>;
-  dimensionAverages: DimensionScores;
   weakestTopic: { category: string; score: number } | null;
   resumeScore: number | null;
   activityHeatmap: Array<{ date: string; count: number; avgScore: number }>;
@@ -88,14 +85,6 @@ export default function DashboardPage() {
       </p>
     );
   }
-
-  const radarData = [
-    { dimension: "Relevance", score: data.dimensionAverages.relevance },
-    { dimension: "Technical", score: data.dimensionAverages.technicalAccuracy },
-    { dimension: "Communication", score: data.dimensionAverages.communication },
-    { dimension: "Confidence", score: data.dimensionAverages.confidence },
-    { dimension: "Completeness", score: data.dimensionAverages.completeness },
-  ];
 
   return (
     <motion.div
@@ -223,8 +212,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-4 lg:col-span-2">
-          <PerformanceRadar data={radarData} />
-
           {data.weakestTopic && (
             <GlowCard className="border-danger/20">
               <div className="rounded-lg bg-danger/5 p-4">

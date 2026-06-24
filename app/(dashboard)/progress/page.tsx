@@ -17,11 +17,6 @@ import {
   LineChart,
   Pie,
   PieChart,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
   XAxis,
   YAxis,
 } from "recharts";
@@ -38,7 +33,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCategoryById } from "@/lib/interview-categories";
 import { cn } from "@/lib/utils";
-import type { DimensionScores } from "@/types";
 
 type DateRange = "7d" | "30d" | "90d" | "all";
 
@@ -57,11 +51,6 @@ interface ProgressData {
     avgScore: number;
     count: number;
   }>;
-  dimensionComparison: {
-    first: DimensionScores;
-    latest: DimensionScores;
-    best: DimensionScores;
-  };
   codingProgress: {
     byDifficulty: { easy: number; medium: number; hard: number };
     overTime: Array<{ date: string; count: number }>;
@@ -120,14 +109,6 @@ export default function ProgressPage() {
       <p className="text-center text-text-secondary">Unable to load progress.</p>
     );
   }
-
-  const radarCompare = [
-    { dimension: "Relevance", first: data.dimensionComparison.first.relevance, latest: data.dimensionComparison.latest.relevance, best: data.dimensionComparison.best.relevance },
-    { dimension: "Technical", first: data.dimensionComparison.first.technicalAccuracy, latest: data.dimensionComparison.latest.technicalAccuracy, best: data.dimensionComparison.best.technicalAccuracy },
-    { dimension: "Communication", first: data.dimensionComparison.first.communication, latest: data.dimensionComparison.latest.communication, best: data.dimensionComparison.best.communication },
-    { dimension: "Confidence", first: data.dimensionComparison.first.confidence, latest: data.dimensionComparison.latest.confidence, best: data.dimensionComparison.best.confidence },
-    { dimension: "Completeness", first: data.dimensionComparison.first.completeness, latest: data.dimensionComparison.latest.completeness, best: data.dimensionComparison.best.completeness },
-  ];
 
   const pieData = [
     { name: "Easy", value: data.codingProgress.byDifficulty.easy, color: CHART_COLORS.success },
@@ -243,52 +224,6 @@ export default function ProgressPage() {
             </Bar>
           </BarChart>
         </ProgressChart>
-      </GlowCard>
-
-      {/* Skill Dimensions */}
-      <GlowCard>
-        <h2 className="mb-4 font-display text-xl font-semibold text-text-primary">
-          Skill Dimensions
-        </h2>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6 }}
-        >
-          <ProgressChart height={300}>
-            <RadarChart data={radarCompare}>
-              <PolarGrid stroke={CHART_COLORS.grid} />
-              <PolarAngleAxis
-                dataKey="dimension"
-                tick={{ fill: CHART_COLORS.text, fontSize: 11 }}
-              />
-              <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-              <Radar
-                name="First"
-                dataKey="first"
-                stroke="#9CA3AF"
-                fill="#9CA3AF"
-                fillOpacity={0.15}
-              />
-              <Radar
-                name="Latest"
-                dataKey="latest"
-                stroke={CHART_COLORS.primary}
-                fill={CHART_COLORS.primary}
-                fillOpacity={0.25}
-              />
-              <Radar
-                name="Best"
-                dataKey="best"
-                stroke={CHART_COLORS.success}
-                fill={CHART_COLORS.success}
-                fillOpacity={0.2}
-              />
-              <Legend />
-              <ChartTooltip />
-            </RadarChart>
-          </ProgressChart>
-        </motion.div>
       </GlowCard>
 
       {/* Coding Progress */}

@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import {
+  buildLocalEvaluationFallback,
+  generateAIJSON,
+} from "@/lib/ai-json";
+import {
   buildEvaluationPrompt,
   formatGeminiUserError,
-  generateGeminiJSON,
 } from "@/lib/gemini";
 import {
   averageDimensionScores,
@@ -20,6 +23,7 @@ import { createNotification } from "@/lib/notifications";
 import {
   evaluateAnswerSchema,
   evaluationResponseSchema,
+  type EvaluationResult,
 } from "@/lib/validations/interview";
 import Answer from "@/models/Answer";
 import Evaluation from "@/models/Evaluation";
@@ -85,28 +89,44 @@ export async function POST(request: Request) {
       category: interviewSession.category,
     });
 
-    const geminiResult = await generateGeminiJSON<unknown>(prompt);
-    const validated = evaluationResponseSchema.safeParse(geminiResult);
+    let evaluationData: EvaluationResult;
+    let evaluationSource: "gemini" | "groq" | "local" = "gemini";
 
-    if (!validated.success) {
-      console.error("Evaluation validation error:", validated.error);
-      return NextResponse.json(
-        { error: "Failed to parse evaluation" },
-        { status: 500 }
+    try {
+      const aiResult = await generateAIJSON<unknown>(prompt);
+      const validated = evaluationResponseSchema.safeParse(aiResult.data);
+
+      if (!validated.success) {
+        console.error("Evaluation validation error:", validated.error);
+        evaluationData = buildLocalEvaluationFallback(
+          transcript,
+          question.keyPoints
+        );
+        evaluationSource = "local";
+      } else {
+        evaluationData = validated.data;
+        evaluationSource = aiResult.source;
+      }
+    } catch (error) {
+      console.error("AI evaluation failed, using local fallback:", error);
+      evaluationData = buildLocalEvaluationFallback(
+        transcript,
+        question.keyPoints
       );
+      evaluationSource = "local";
     }
 
     const evaluation = await Evaluation.create({
       answerId,
       sessionId,
       userId: session.user.id,
-      overallScore: validated.data.overallScore,
-      dimensions: validated.data.dimensions,
-      strengths: validated.data.strengths,
-      weaknesses: validated.data.weaknesses,
-      suggestions: validated.data.suggestions,
-      missedKeyPoints: validated.data.missedKeyPoints,
-      idealAnswer: validated.data.idealAnswer,
+      overallScore: evaluationData.overallScore,
+      dimensions: evaluationData.dimensions,
+      strengths: evaluationData.strengths,
+      weaknesses: evaluationData.weaknesses,
+      suggestions: evaluationData.suggestions,
+      missedKeyPoints: evaluationData.missedKeyPoints,
+      idealAnswer: evaluationData.idealAnswer,
       evaluatedAt: new Date(),
     });
 
@@ -187,6 +207,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       answerId,
       questionId,
+      evaluationSource,
       evaluation: {
         id: evaluation._id.toString(),
         overallScore: evaluation.overallScore,

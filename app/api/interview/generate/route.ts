@@ -4,8 +4,8 @@ import { auth } from "@/lib/auth";
 import {
   buildQuestionGenerationPrompt,
   formatGeminiUserError,
-  generateGeminiJSON,
 } from "@/lib/gemini";
+import { generateAIJSON } from "@/lib/ai-json";
 import {
   getCategoryById,
   resolveDifficultyForQuestion,
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       interviewType: categoryMeta.interviewType,
     });
 
-    const geminiResponse = await generateGeminiJSON<{
+    const { data: geminiResponse } = await generateAIJSON<{
       questions: Array<{
         question: string;
         expectedAnswer?: string;

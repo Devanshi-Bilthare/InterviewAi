@@ -6,7 +6,8 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 const GEMINI_FALLBACK_MODEL =
   process.env.GEMINI_FALLBACK_MODEL ?? "gemini-2.5-flash-lite";
 
-const MAX_RATE_LIMIT_RETRIES = 4;
+const MAX_RATE_LIMIT_RETRIES = 2;
+const MAX_RATE_LIMIT_DELAY_MS = 12_000;
 
 function getGenAI() {
   if (!process.env.GEMINI_API_KEY) {
@@ -34,18 +35,19 @@ function isRateLimitError(error: unknown): boolean {
 
 function getRetryDelayMs(error: unknown, attempt: number): number {
   const message = error instanceof Error ? error.message : String(error);
+  let delay = 2000 * 2 ** attempt;
+
   const secondsMatch = message.match(/retry in (\d+(?:\.\d+)?)s/i);
   if (secondsMatch) {
-    return Math.ceil(parseFloat(secondsMatch[1]) * 1000) + 500;
+    delay = Math.ceil(parseFloat(secondsMatch[1]) * 1000) + 500;
+  } else {
+    const retryInfoMatch = message.match(/"retryDelay":"(\d+)s"/i);
+    if (retryInfoMatch) {
+      delay = parseInt(retryInfoMatch[1], 10) * 1000 + 500;
+    }
   }
 
-  const retryInfoMatch = message.match(/"retryDelay":"(\d+)s"/i);
-  if (retryInfoMatch) {
-    return parseInt(retryInfoMatch[1], 10) * 1000 + 500;
-  }
-
-  // Exponential backoff: 2s, 4s, 8s, 16s
-  return Math.min(2000 * 2 ** attempt, 16000);
+  return Math.min(delay, MAX_RATE_LIMIT_DELAY_MS);
 }
 
 async function withGeminiRetry<T>(
@@ -139,6 +141,11 @@ export async function generateGeminiJSON<T>(
     } catch (error) {
       lastError = error;
       console.warn(`Gemini model ${modelName} failed:`, error);
+
+      // Daily/minute quotas are per project — don't burn time on a second model.
+      if (isRateLimitError(error)) {
+        break;
+      }
     }
   }
 

@@ -68,9 +68,15 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
   const [state, setState] = useState<InterviewState>("idle");
   const [transcript, setTranscript] = useState("");
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
+  const [evaluationSource, setEvaluationSource] = useState<
+    "gemini" | "groq" | "local" | null
+  >(null);
   const [questionTimer, setQuestionTimer] = useState(0);
   const [showKeyPoints, setShowKeyPoints] = useState(false);
   const processedBlobRef = useRef<string | null>(null);
+  const sessionRef = useRef<SessionData | null>(null);
+  const currentIndexRef = useRef(0);
+  const processingRef = useRef(false);
 
   const {
     isRecording,
@@ -110,8 +116,28 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
     if (isRecording) setState("recording");
   }, [isRecording]);
 
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
   const transcribeAndEvaluate = useCallback(
     async (blob: Blob, recDuration: number) => {
+      if (processingRef.current) return;
+      processingRef.current = true;
+
+      const activeSession = sessionRef.current;
+      const question = activeSession?.questions[currentIndexRef.current];
+      if (!question) {
+        processingRef.current = false;
+        toast.error("Question not found. Please refresh and try again.");
+        setState("idle");
+        return;
+      }
+
       setState("transcribing");
       try {
         const formData = new FormData();
@@ -130,14 +156,11 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
         setTranscript(transcribeData.transcript);
         setState("evaluating");
 
-        const currentQuestion = session?.questions[currentIndex];
-        if (!currentQuestion) return;
-
         const evalRes = await fetch("/api/interview/evaluate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            questionId: currentQuestion.id,
+            questionId: question.id,
             transcript: transcribeData.transcript,
             sessionId,
             duration: recDuration,
@@ -150,6 +173,14 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
         }
 
         setEvaluation(evalData.evaluation);
+        setEvaluationSource(evalData.evaluationSource ?? "gemini");
+        if (evalData.evaluationSource === "local") {
+          toast.info(
+            "AI quota reached — showing estimated feedback. Full AI scoring will return when quota resets."
+          );
+        } else if (evalData.evaluationSource === "groq") {
+          toast.info("Evaluated using backup AI while Gemini quota resets.");
+        }
         setShowKeyPoints(true);
         setState("showing-results");
       } catch (err) {
@@ -159,9 +190,11 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
         setState("idle");
         resetRecorder();
         processedBlobRef.current = null;
+      } finally {
+        processingRef.current = false;
       }
     },
-    [session, currentIndex, sessionId, resetRecorder]
+    [sessionId, resetRecorder]
   );
 
   useEffect(() => {
@@ -193,6 +226,7 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
       processedBlobRef.current = null;
       setTranscript("");
       setEvaluation(null);
+      setEvaluationSource(null);
       setShowKeyPoints(false);
       await start();
     }
@@ -204,6 +238,7 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
       setState("idle");
       setTranscript("");
       setEvaluation(null);
+      setEvaluationSource(null);
       setShowKeyPoints(false);
       setQuestionTimer(0);
       resetRecorder();
@@ -221,6 +256,8 @@ export function LiveInterviewSession({ sessionId }: LiveInterviewSessionProps) {
         setState("idle");
         setTranscript("");
         setEvaluation(null);
+        setEvaluationSource(null);
+      setEvaluationSource(null);
         setShowKeyPoints(false);
         setQuestionTimer(0);
         resetRecorder();
